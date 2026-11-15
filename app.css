@@ -909,3 +909,98 @@ h1,h2,h3{margin:0;text-wrap:balance}
   font-family:var(--mono);font-size:max(9px,calc(var(--tile) * .22));
   font-weight:600;line-height:1;color:var(--mark);opacity:.9;
 }
+
+
+/* ============================================================
+   WORD SQUARES — the board, the letters and the rack
+
+   The board is fifteen squares of mostly nothing, so the premium
+   squares carry the colour and the plain ones stay quiet. Letters are
+   bone-coloured tiles with the value in the corner, the way a letter
+   tile has always looked.
+   ============================================================ */
+:root{
+  --wsq:32px;                 /* set by the fitting code */
+  --w-plain:rgba(255,255,255,.07);
+  --w-dl:#6fb3e0; --w-tl:#2f7fc4;
+  --w-dw:#f0917a; --w-tw:#d4483a;
+  --w-face:#f6efdd; --w-face-2:#e8dcc0; --w-ink:#2a2318;
+}
+:root[data-skin="slate"]{ --w-plain:rgba(20,30,28,.06) }
+
+.wboard{
+  position:relative;margin:auto;flex:0 0 auto;
+  display:grid;grid-template-columns:repeat(15, var(--wsq));
+  grid-template-rows:repeat(15, var(--wsq));
+  gap:2px;padding:2px;
+}
+.wcell{
+  width:var(--wsq);height:var(--wsq);border-radius:3px;
+  background:var(--w-plain);
+  display:flex;align-items:center;justify-content:center;
+  font-size:max(6px, calc(var(--wsq) * .26));
+  font-weight:800;letter-spacing:.02em;line-height:1;
+  color:rgba(255,255,255,.75);text-align:center;
+}
+:root[data-skin="slate"] .wcell{color:rgba(20,30,28,.6)}
+.wcell[data-p="d"]{background:var(--w-dl);color:#07243a}
+.wcell[data-p="t"]{background:var(--w-tl);color:#eaf4ff}
+.wcell[data-p="D"]{background:var(--w-dw);color:#3a1208}
+.wcell[data-p="T"]{background:var(--w-tw);color:#fff0ec}
+.wcell[data-p="C"]{background:var(--w-dw);color:#3a1208;font-size:max(9px,calc(var(--wsq) * .5))}
+/* a square you may drop on, while a tile is in hand */
+.wcell.open{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+
+.wtile{
+  width:var(--wsq);height:var(--wsq);border-radius:3px;position:relative;
+  background:linear-gradient(170deg,var(--w-face),var(--w-face-2));
+  color:var(--w-ink);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:max(9px, calc(var(--wsq) * .56));line-height:1;
+  box-shadow:0 1px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.7);
+  user-select:none;-webkit-user-select:none;
+}
+.wtile .val{
+  position:absolute;right:1px;bottom:0;
+  font-family:var(--mono);font-size:max(5px, calc(var(--wsq) * .24));
+  font-weight:600;opacity:.72;
+}
+/* a blank has no value and says so by being quieter */
+.wtile.blank{background:linear-gradient(170deg,#fffdf6,#efe7d2);font-style:italic}
+.wtile.fresh{outline:2px solid var(--accent);outline-offset:1px;cursor:pointer;z-index:1}
+
+/* ---- the rack ---- */
+.rack{
+  display:flex;flex-direction:row;justify-content:center;align-items:center;
+  gap:5px;flex-wrap:wrap;padding:4px 0 2px;min-height:44px;
+}
+.rack .wtile{
+  --wsq:40px;cursor:pointer;transition:transform .12s ease;
+}
+.rack .wtile:hover{transform:translateY(-3px)}
+.rack .wtile.picked{transform:translateY(-7px);outline:2px solid var(--accent);outline-offset:2px}
+.rack .wtile.swapping{opacity:.55;outline:2px dashed var(--on-table-line);outline-offset:2px}
+
+/* ---- choosing what a blank stands for ---- */
+.letters{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin:14px 0 4px;
+}
+.letters button{
+  padding:.55em 0;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--ink);
+  font-weight:800;font-size:1rem;cursor:pointer;
+}
+.letters button:hover{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+
+/* ---- what the other player just did ---- */
+.playnote{
+  margin:6px 0 0;font-size:.86rem;color:var(--on-table-dim);text-align:center;
+}
+:root[data-skin="slate"] .playnote{color:var(--ink-dim)}
+.playnote b{color:var(--on-table)}
+:root[data-skin="slate"] .playnote b{color:var(--ink)}
+
+@media (max-width:560px){
+  .rack .wtile{--wsq:36px}
+  .rack{gap:4px}
+}

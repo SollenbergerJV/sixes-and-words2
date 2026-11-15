@@ -17,6 +17,35 @@ function rules(name) {
   try { return require('../shared/' + name); } catch (e) { return require('./' + name); }
 }
 const { SixesGame } = rules('sixes.js');
+const { WordGame } = rules('words.js');
+const WordTrie = rules('word-trie.js');
+
+/* ---------- the dictionary, once ----------
+   Only the server needs it to settle a challenge, and only a word game
+   needs it at all, so it is read the first time one starts rather than
+   at boot. */
+let DICT = null;
+function dictionary() {
+  if (DICT) return DICT;
+  const fs = require('fs'), path = require('path');
+  const tries = [
+    path.join(__dirname, '..', 'public', 'words.txt'),
+    path.join(__dirname, 'words.txt')
+  ];
+  for (const f of tries) {
+    try {
+      DICT = new WordTrie().build(fs.readFileSync(f, 'utf8'));
+      console.log('dictionary loaded: ' + DICT.size() + ' words');
+      return DICT;
+    } catch (e) { /* try the next layout */ }
+  }
+  /* Rather than refuse to start a game, run without one: every word then
+     stands, because no challenge can be upheld. Said out loud, because
+     silently changing the rules would be worse than the missing file. */
+  console.error('words.txt was not found — word games will run with no dictionary, so no challenge can succeed');
+  DICT = { has: function () { return true; }, size: function () { return 0; } };
+  return DICT;
+}
 
 /* No 0/O/1/I/5/S — codes get read aloud down a phone. */
 const ALPHABET = 'ABCDEFGHJKMNPQRTUVWXYZ2346789';
@@ -48,7 +77,7 @@ Rooms.prototype.create = function (opts) {
   const code = this.newCode();
   const room = {
     code: code,
-    game: 'sixes',
+    game: opts.game === 'words' ? 'words' : 'sixes',
     target: Number.isFinite(opts.target) ? opts.target : 0,
     seats: [null, null],
     G: null,
@@ -98,7 +127,9 @@ function startMatch(room) {
     room.seats[0] ? room.seats[0].name : 'Player 1',
     room.seats[1] ? room.seats[1].name : 'Player 2'
   ];
-  room.G = new SixesGame({ target: room.target, first: 0 });
+  room.G = room.game === 'words'
+    ? new WordGame({ names: room.names.slice(), dict: dictionary(), first: 0 })
+    : new SixesGame({ target: room.target, first: 0 });
   room.started = true;
   room.touched = Date.now();
 }
@@ -115,8 +146,54 @@ function blanks(n) {
 }
 
 function viewFor(room, p) {
+  if (!room.G) return null;
+  return room.game === 'words' ? viewWords(room, p) : viewSixes(room, p);
+}
+
+/* ---------- the word game, per seat ----------
+   The other rack is a count, never letters, and the bag is a number. */
+function viewWords(room, p) {
   const G = room.G;
-  if (!G) return null;
+  const them = 1 - p;
+  const mine = G.turn === p;
+
+  const board = [];
+  for (const k of Object.keys(G.board)) {
+    const bits = k.split(',');
+    const t = G.board[k];
+    board.push({ r: parseInt(bits[0], 10), c: parseInt(bits[1], 10), ch: t.ch, blank: !!t.blank });
+  }
+
+  return {
+    kind: 'words',
+    you: p,
+    names: room.names.slice(),
+    scores: G.scores.slice(),
+    turn: G.turn,
+    phase: G.phase,
+    racks: [
+      p === 0 ? G.racks[0].map(function (t) { return { id: t.id, ch: t.ch, v: t.v }; }) : null,
+      p === 1 ? G.racks[1].map(function (t) { return { id: t.id, ch: t.ch, v: t.v }; }) : null
+    ],
+    rackCounts: [G.racks[0].length, G.racks[1].length],
+    bagCount: G.bag.length,
+    board: board,
+    placed: mine ? G.placed.map(function (x) {
+      return { r: x.r, c: x.c, ch: x.tile.ch, blank: !!x.tile.blank, id: x.tile.id };
+    }) : [],
+    pending: mine ? G.turnScore() : 0,
+    lastPlay: G.lastPlay,
+    /* What may still be challenged, and by whom. The words themselves are
+       public — they are sitting on the board. */
+    open: G.open ? { by: G.open.by, words: G.open.words, score: G.open.score } : null,
+    canChallenge: G.canChallenge(p),
+    ended: G.ended,
+    matchOver: G.phase === 'ended'
+  };
+}
+
+function viewSixes(room, p) {
+  const G = room.G;
   const them = 1 - p;
   const mine = G.turn === p;
 
@@ -180,9 +257,30 @@ function applySixes(G, p, a) {
   }
 }
 
+function applyWords(G, p, a) {
+  switch (a.do) {
+    case 'place':   G.place(p, String(a.tileId), a.r | 0, a.c | 0, a.letter); return;
+    case 'unplace': G.unplace(p, String(a.tileId)); return;
+    case 'clear':   G.takeBackAll(p); return;
+    case 'submit':  G.submit(p); return;
+    case 'swap':    G.swap(p, Array.isArray(a.ids) ? a.ids.map(String) : []); return;
+    case 'pass':    G.pass(p); return;
+    default: throw new Error('unknown action');
+  }
+}
+
 function applyAction(room, p, a) {
   const G = room.G;
   if (!G) throw new Error('the game has not started');
+  if (room.game === 'words') {
+    if (G.phase === 'ended') throw new Error('the game is over');
+    /* A challenge is the one thing you do on your turn before doing
+       anything else with it, so it is checked before the turn test. */
+    if (a.do === 'challenge') { G.challenge(p); return; }
+    if (G.turn !== p) throw new Error('not your turn');
+    applyWords(G, p, a);
+    return;
+  }
   if (G.matchOver) throw new Error('the match is over');
   if (a.do === 'next') {
     // either player may start the next game; whoever asks second is a no-op

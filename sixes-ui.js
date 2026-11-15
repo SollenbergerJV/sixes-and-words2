@@ -95,9 +95,14 @@ let swapping = null;     // a Set of tile ids while choosing what to swap
    the game still plays on its own. */
 function isOnline() { return typeof ONLINE !== 'undefined' && ONLINE === true; }
 function isBot(p) { return !isOnline() && S.mode === 'ai' && p === 1; }
+/* Whoever is sitting there, in whichever game is on the table. The call
+   and chat ask this too, and asking only the Sixes position meant the
+   word game offered "You is here. Talk to each other?" */
 function nameOf(p) {
-  if (G && G.names) return G.names[p] || ('Player ' + (p + 1));
-  return S.names[p] || ('Player ' + (p + 1));
+  const fallback = 'Player ' + (p + 1);
+  if (typeof WG !== 'undefined' && WG && WG.names) return WG.names[p] || fallback;
+  if (G && G.names) return G.names[p] || fallback;
+  return S.names[p] || fallback;
 }
 function youLabel(p) { return p === viewer ? 'You' : nameOf(p); }
 
@@ -601,11 +606,12 @@ function playBotTurn() {
 
 /* ---------- screens ---------- */
 function showScreen(which) {
-  for (const id of ['lobby', 'room', 'sixes']) {
+  for (const id of ['lobby', 'room', 'sixes', 'words']) {
     const s = $('#screen-' + id);
     if (s) s.hidden = (id !== which);
   }
   if (which === 'sixes') requestAnimationFrame(fitBoard);
+  if (which === 'words' && typeof wFitBoard === 'function') requestAnimationFrame(wFitBoard);
 }
 
 function leaveTable() {
@@ -623,6 +629,12 @@ function againFromStart() {
 /* ---------- the lobby ---------- */
 function paintLobby() {
   applySkin();
+  for (const [id, game] of [['#pickSixes', 'sixes'], ['#pickWords', 'words']]) {
+    const b = $(id);
+    if (b) b.setAttribute('aria-pressed', S.game === game ? 'true' : 'false');
+  }
+  const start = $('#startBtn');
+  if (start) start.textContent = S.game === 'words' ? 'Start the first game' : 'Start the first game';
   $('#n0').value = S.names[0] === 'You' ? '' : S.names[0];
   $('#n1').value = (S.names[1] === 'Opponent' || S.names[1] === 'Computer') ? '' : S.names[1];
   segPaint('#modeSeg', S.mode);
@@ -778,14 +790,24 @@ function initTable() {
   loadSettings();
   applySkin();
 
+  for (const [id, game] of [['#pickSixes', 'sixes'], ['#pickWords', 'words']]) {
+    const b = $(id);
+    if (b) b.onclick = function () { S.game = game; saveSettings(); paintLobby(); };
+  }
+
   segWire('#modeSeg', function (v) { S.mode = v; });
   segWire('#diffSeg', function (v) { S.diff = v; });
 
-  $('#startBtn').onclick = guard(startLocalGame);
+  $('#startBtn').onclick = guard(function () {
+    if (S.game === 'words') startWordGame(); else startLocalGame();
+  });
   $('#sxBack').onclick = guard(leaveTable);
   $('#sxRules').onclick = showRules;
   $('#sxSettings').onclick = showSettings;
-  $('#lobbyRules').onclick = showRules;
+  $('#lobbyRules').onclick = function () {
+    if (S.game === 'words' && typeof wShowRules === 'function') wShowRules();
+    else showRules();
+  };
   $('#lobbySettings').onclick = showSettings;
 
   document.addEventListener('keydown', function (e) {

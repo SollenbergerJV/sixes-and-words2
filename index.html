@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-app-version="0.2.1">
+<html lang="en" data-app-version="0.3.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -37,9 +37,9 @@
               <span class="glyph">◆</span>
               <span><b>Sixes</b><small>Lines of colour and shape — highest score wins</small></span>
             </button>
-            <button class="gamecard" id="pickWords" aria-pressed="false" disabled>
+            <button class="gamecard" id="pickWords" aria-pressed="false">
               <span class="glyph">W</span>
-              <span><b>Word Squares</b><small>Coming next</small></span>
+              <span><b>Word Squares</b><small>Crossword play — highest score wins</small></span>
             </button>
           </div>
         </div>
@@ -146,6 +146,38 @@
     </section>
   </main>
 
+  <!-- ============ WORD SQUARES ============ -->
+  <main class="screen table words" id="screen-words" hidden>
+    <header class="topbar">
+      <button class="icobtn" id="wdBack" title="Leave the table" aria-label="Leave the table">‹</button>
+      <div class="scoreboard" id="wdScore"></div>
+      <button class="icobtn online-only" id="wdCall" title="Video and voice" aria-label="Video and voice" hidden>&#128249;<span class="dot live" id="wdCallDot" hidden></span></button>
+      <button class="icobtn online-only" id="wdChat" title="Chat" aria-label="Chat" hidden>&#128172;<span class="dot" id="wdChatDot" hidden></span></button>
+      <button class="icobtn" id="wdRules" title="How to play" aria-label="How to play">?</button>
+      <button class="icobtn" id="wdSettings" title="Look and sound" aria-label="Look and sound">☰</button>
+    </header>
+
+    <section class="oppzone">
+      <div class="seat" id="wdOppSeat"></div>
+    </section>
+
+    <section class="boardwrap" id="wdWrap">
+      <div class="boardscroll" id="wdScroll">
+        <div class="wboard" id="wdBoard"></div>
+      </div>
+      <p class="tablemsg" id="wdMsg" aria-live="polite"></p>
+    </section>
+
+    <section class="youzone">
+      <div class="handmeta">
+        <span class="bagchip" id="wdBag">Bag <b>—</b></span>
+        <span class="turnchip" id="wdPending" hidden>This turn <b>0</b></span>
+      </div>
+      <div class="rack" id="wdRack"></div>
+      <div class="actions" id="wdActions"></div>
+    </section>
+  </main>
+
   <!-- ============ VIDEO ============ -->
   <div class="calldock" id="callDock" hidden>
     <div class="callgrip" id="callGrip" title="Drag to move">
@@ -190,7 +222,11 @@
 <script src="/shared/sixes-ai.js"></script>
 <script src="/net.js"></script>
 <script src="/media.js"></script>
+<script src="/shared/words.js"></script>
+<script src="/shared/word-trie.js"></script>
+<script src="/shared/words-ai.js"></script>
 <script src="/sixes-ui.js"></script>
+<script src="/words-ui.js"></script>
 <script src="/online.js"></script>
 <script src="/boot.js"></script>
 </body>

@@ -1,4 +1,12 @@
 'use strict';
+/* Everything below is wrapped so that nothing leaks into the page's
+   global names. Two rules files sharing one page is enough to make that
+   matter: both of them wanted to call a function makeBag, and in a
+   browser the second one to load simply replaced the first — which had
+   Sixes quietly dealing from the word game's bag of a hundred tiles.
+   What the rest of the app may see is listed at the bottom, and nothing
+   else is reachable. */
+(function () {
 /* ============================================================
    SIXES — the rules.
 
@@ -425,3 +433,4 @@ if (typeof module !== 'undefined' && module.exports) {
     HAND_SIZE: HAND_SIZE, LINE_MAX: LINE_MAX, SIX_BONUS: SIX_BONUS, OUT_BONUS: OUT_BONUS
   };
 }
+})();

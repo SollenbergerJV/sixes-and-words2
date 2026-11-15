@@ -57,7 +57,7 @@ function wireOnlineLobby() {
 
   if (host) host.onclick = function () {
     ONLINE = true;
-    NET.create('sixes', S.target, ($('#n0').value || 'Player').trim());
+    NET.create(S.game === 'words' ? 'words' : 'sixes', S.target, ($('#n0').value || 'Player').trim());
     showRoomScreen(null);
   };
 
@@ -152,7 +152,7 @@ function setChat(open) {
   }
 }
 function markChatDot() {
-  for (const id of ['#chatDot']) {
+  for (const id of ['#chatDot', '#wdChatDot']) {
     const d = $(id);
     if (d) d.hidden = unread === 0;
   }
@@ -168,7 +168,7 @@ function wireChat() {
     NET.chat(t);
     i.value = '';
   };
-  for (const id of ['#btnChat']) {
+  for (const id of ['#btnChat', '#wdChat']) {
     const b = $(id);
     if (b) b.onclick = function () { setChat(!chatOpen); };
   }
@@ -236,7 +236,7 @@ function showCallDock(show) {
 }
 
 function markCallRunning(on) {
-  for (const id of ['#callDot']) {
+  for (const id of ['#callDot', '#wdCallDot']) {
     const d = $(id);
     if (d) d.hidden = !on;
   }
@@ -327,7 +327,7 @@ function wireCall() {
      over mobile data. */
   MEDIA.setVoiceOnly(!onComputer());
 
-  for (const id of ['#btnCall']) {
+  for (const id of ['#btnCall', '#wdCall']) {
     const b = $(id);
     if (b) b.onclick = function () {
       if (CALL.on || CALL.receiving) showCallDock($('#callDock').hidden);
@@ -684,7 +684,7 @@ function refreshCallView() {
 
 /* ---------- reacting to the server ---------- */
 function onlineTableChrome(on) {
-  for (const id of ['#btnCall', '#btnChat']) {
+  for (const id of ['#btnCall', '#btnChat', '#wdCall', '#wdChat']) {
     const b = $(id);
     if (b) b.hidden = !on;
   }
@@ -710,7 +710,7 @@ function wireNet() {
     onlineTableChrome(true);
     LAST_KIND = v.kind;
     MEDIA.setPolite(MYSEAT === 0);
-    sxApplyServerState(v);
+    if (v.kind === 'words') wApplyServerState(v); else sxApplyServerState(v);
     if (v.names && v.names[0] && v.names[1]) { PEER_HERE = true; maybeOfferCall(); }
   });
 

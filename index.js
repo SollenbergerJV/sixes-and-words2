@@ -9,6 +9,7 @@
    depend on this machine and a bigger host buys nothing.
    ============================================================ */
 const http = require('http');
+const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
 const ws = require('./ws.js');
@@ -17,7 +18,7 @@ const R = require('./rooms.js');
 /* Bumped whenever the app changes. It is shown in Look & sound and served at
    /version, so there is a way to answer "did my update actually go live?"
    without guessing from behaviour. */
-const VERSION = '0.2.1';
+const VERSION = '0.3.0';
 
 const PORT = process.env.PORT || 8080;
 const ROOT = path.join(__dirname, '..');
@@ -105,6 +106,22 @@ function serve(req, res) {
 
     fs.readFile(file, function (err, buf) {
       if (err) return end(res, 404, 'not found');
+
+      /* Text compresses to a fraction of its size and the word list is a
+         megabyte of it. Nobody should spend that on mobile data to start a
+         game. Binary files (the icons) are already compressed and are sent
+         as they are. */
+      const textish = code || ext === '.txt' || ext === '.json' || ext === '.svg';
+      const wants = String(req.headers['accept-encoding'] || '').indexOf('gzip') >= 0;
+      if (textish && wants && buf.length > 1024) {
+        return zlib.gzip(buf, function (gzErr, out) {
+          if (gzErr) { res.writeHead(200, headers); return res.end(buf); }
+          headers['Content-Encoding'] = 'gzip';
+          headers['Vary'] = 'Accept-Encoding';
+          res.writeHead(200, headers);
+          res.end(out);
+        });
+      }
       res.writeHead(200, headers);
       res.end(buf);
     });
@@ -138,6 +155,7 @@ const NEEDED = [
   'index.html', 'app.css', 'boot.js', 'media.js', 'net.js', 'online.js',
   'sixes-ui.js', 'sixes.js', 'sixes-ai.js', 'sw.js', 'manifest.webmanifest',
   'index.js', 'rooms.js', 'ws.js', 'start.js', 'package.json',
+  'words.txt', 'words.js', 'word-trie.js', 'words-ai.js', 'words-ui.js',
   'icon.svg', 'icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png'
 ];
 

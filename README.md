@@ -1,8 +1,14 @@
 # Words &amp; Sixes
 
-Two-player **Sixes** — lines of colour and shape — with a computer opponent,
-pass-and-play, and online play against a real person over an invite code.
-**Word Squares** comes next; the app is built with a second game in mind.
+Two games for two players, each with a computer opponent, pass-and-play,
+and online play against a real person over an invite code.
+
+**Sixes** — lines of colour and shape, highest score wins.
+
+**Word Squares** — crossword play on a fifteen-square board, with a
+111,000-word dictionary. A word the dictionary does not know is not
+refused: you may play it, and your opponent may challenge it. A right
+challenge takes the play back; a wrong one costs ten points.
 
 Voice works everywhere. Video is for computers only: a phone gets voice and
 no picture, and says so rather than opening a camera nobody wants.
@@ -34,18 +40,26 @@ enough on ordinary home wi-fi.
 
 ## The tests
 
-    npm test               the rules
-    npm run test:opponent  the computer, playing hundreds of games
-    npm run test:browser   two real browsers, a real room, a real call
-    npm run test:flat      the same app running from a flattened upload
+    npm test                the Sixes rules
+    npm run test:words      the Word Squares rules
+    npm run test:opponent   the Sixes computer, playing hundreds of games
+    npm run test:wordbot    the Word Squares computer, playing full games
+    npm run test:browser    two real browsers, a real room, a real call
+    npm run test:wordui     the word board, tapped out by hand
+    npm run test:flat       the same app running from a flattened upload
 
 The browser tests need Playwright and drive actual clicks; they are the only
 honest way to answer "can a person play this".
 
 ## Layout
 
-    shared/sixes.js      the rules — the same file runs in node and the browser
-    shared/sixes-ai.js   the computer opponent
+    shared/sixes.js      the Sixes rules — the same file runs in node and the browser
+    shared/sixes-ai.js   the Sixes computer opponent
+    shared/words.js      the Word Squares rules
+    shared/word-trie.js  the dictionary, compact enough for a phone
+    shared/words-ai.js   the Word Squares computer opponent
+    public/words.txt     111,000 words, served compressed
+    tools/build-words.py rebuilds that list from the system dictionary
     server/index.js      static files, /version, /healthz, ICE config
     server/rooms.js      rooms, seats, and the authoritative game
     server/ws.js         a websocket implementation with no dependencies

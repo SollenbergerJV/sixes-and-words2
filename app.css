@@ -762,28 +762,19 @@ h1,h2,h3{margin:0;text-wrap:balance}
    they stay crisp at any size and the app still works with no network.
    ============================================================ */
 :root{
-  /* The six tile colours, chosen for a player who is a little colour blind.
-     Brightness alone does not fix that — red and green read as the same hue
-     to a lot of people however vivid they are — so the set is also laid out
-     on a deliberate ladder of LIGHTNESS. Even with hue stripped out, no two
-     tiles land on the same rung:
+  /* The six tile colours. Chosen for difference first: the hues are pushed
+     as far apart as six hues can be, and a cyan-leaning blue and a magenta-
+     leaning purple keep the two that usually sit closest well apart. They
+     are also on a ladder of brightness — red darkest, then purple, blue,
+     orange, green, yellow — so even with hue taken away entirely no two
+     tiles land on the same rung, and red and green sit at opposite ends.
 
-        red      darkest
-        blue     dark
-        purple   mid
-        orange   mid-light
-        green    light
-        yellow   lightest
+     Every face is light enough to carry a black shape, which is the point:
+     one shape colour on every tile, no exceptions to remember. */
+  --t-R:#ff2d2d;  --t-O:#ff9a00;  --t-Y:#ffee00;
+  --t-G:#00e676;  --t-B:#00b0ff;  --t-P:#e040fb;
 
-     The pairs that usually get confused are the ones pushed furthest apart:
-     red against green is the widest gap of the six. */
-  --t-R:#e4002b;  --t-O:#ff8200;  --t-Y:#ffe000;
-  --t-G:#3ae374;  --t-B:#0a66ff;  --t-P:#b14bff;
-
-  /* The shape on the face is white on the dark colours and near-black on the
-     pale ones, because a white star on bright yellow cannot be seen at all. */
-  --mk-R:#fff; --mk-O:#2b1200; --mk-Y:#241f00;
-  --mk-G:#06301a; --mk-B:#fff;  --mk-P:#fff;
+  --mark:#0a0a0a;
 
   --tile:46px;            /* set by the fitting code, never hard-coded in a rule */
   --tilegap:3px;
@@ -835,15 +826,12 @@ h1,h2,h3{margin:0;text-wrap:balance}
              inset 0 1px 0 rgba(255,255,255,.3);
   cursor:default;user-select:none;-webkit-user-select:none;
 }
-.tile[data-col="R"]{--tc:var(--t-R);--mk:var(--mk-R)}
-.tile[data-col="O"]{--tc:var(--t-O);--mk:var(--mk-O)}
-.tile[data-col="Y"]{--tc:var(--t-Y);--mk:var(--mk-Y)}
-.tile[data-col="G"]{--tc:var(--t-G);--mk:var(--mk-G)}
-.tile[data-col="B"]{--tc:var(--t-B);--mk:var(--mk-B)}
-.tile[data-col="P"]{--tc:var(--t-P);--mk:var(--mk-P)}
+.tile[data-col="R"]{--tc:var(--t-R)} .tile[data-col="O"]{--tc:var(--t-O)}
+.tile[data-col="Y"]{--tc:var(--t-Y)} .tile[data-col="G"]{--tc:var(--t-G)}
+.tile[data-col="B"]{--tc:var(--t-B)} .tile[data-col="P"]{--tc:var(--t-P)}
 
 /* the six shapes, white on the colour */
-.tile .mark{width:58%;height:58%;background:var(--mk,#fff);display:block}
+.tile .mark{width:58%;height:58%;background:var(--mark);display:block}
 .tile[data-shape="circle"] .mark{border-radius:50%}
 .tile[data-shape="square"] .mark{border-radius:2px}
 .tile[data-shape="diamond"] .mark{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
@@ -919,5 +907,5 @@ h1,h2,h3{margin:0;text-wrap:balance}
 :root[data-letters="yes"] .tile .lt{
   display:block;position:absolute;right:3px;bottom:1px;
   font-family:var(--mono);font-size:max(9px,calc(var(--tile) * .22));
-  font-weight:600;line-height:1;color:var(--mk,#fff);opacity:.92;
+  font-weight:600;line-height:1;color:var(--mark);opacity:.9;
 }

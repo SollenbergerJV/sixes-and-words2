@@ -154,6 +154,11 @@ function viewFor(room, p) {
       return { r: x.r, c: x.c, col: x.tile.c, s: x.tile.s, id: x.tile.id };
     }) : [],
     pending: mine ? G.turnScore() : 0,
+    /* Whether this player has any legal move at all. The client cannot
+       work this out for itself — it cannot see the board's full state
+       against a hand it does not hold — and without it there is no way to
+       know whether to offer the Pass button. */
+    mustPass: mine ? G.mustPass(p) : false,
     lastTurn: G.lastTurn,
     ended: G.ended,
     matchOver: G.matchOver
@@ -170,6 +175,7 @@ function applySixes(G, p, a) {
     case 'clear':   G.takeBackAll(p); return;
     case 'commit':  G.commit(p); return;
     case 'swap':    G.swap(p, Array.isArray(a.ids) ? a.ids.map(String) : []); return;
+    case 'pass':    G.pass(p); return;
     default: throw new Error('unknown action');
   }
 }

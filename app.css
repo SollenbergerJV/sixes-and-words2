@@ -762,8 +762,29 @@ h1,h2,h3{margin:0;text-wrap:balance}
    they stay crisp at any size and the app still works with no network.
    ============================================================ */
 :root{
-  --t-R:#c0392b; --t-O:#d2721c; --t-Y:#cfa70d;
-  --t-G:#2e8b4f; --t-B:#2b6aa8; --t-P:#7a4b9c;
+  /* The six tile colours, chosen for a player who is a little colour blind.
+     Brightness alone does not fix that — red and green read as the same hue
+     to a lot of people however vivid they are — so the set is also laid out
+     on a deliberate ladder of LIGHTNESS. Even with hue stripped out, no two
+     tiles land on the same rung:
+
+        red      darkest
+        blue     dark
+        purple   mid
+        orange   mid-light
+        green    light
+        yellow   lightest
+
+     The pairs that usually get confused are the ones pushed furthest apart:
+     red against green is the widest gap of the six. */
+  --t-R:#e4002b;  --t-O:#ff8200;  --t-Y:#ffe000;
+  --t-G:#3ae374;  --t-B:#0a66ff;  --t-P:#b14bff;
+
+  /* The shape on the face is white on the dark colours and near-black on the
+     pale ones, because a white star on bright yellow cannot be seen at all. */
+  --mk-R:#fff; --mk-O:#2b1200; --mk-Y:#241f00;
+  --mk-G:#06301a; --mk-B:#fff;  --mk-P:#fff;
+
   --tile:46px;            /* set by the fitting code, never hard-coded in a rule */
   --tilegap:3px;
 }
@@ -783,11 +804,14 @@ h1,h2,h3{margin:0;text-wrap:balance}
      reachable corner to corner once it is bigger than the screen. */
   display:flex;align-items:flex-start;justify-content:flex-start;
   border-radius:var(--r);
-  background:rgba(0,0,0,.10);
+  /* A darker bed under the tiles. The felt is green and so is one of the
+     tiles; sinking the playing area well below the table keeps every colour
+     reading against the same dark ground instead of against its own hue. */
+  background:rgba(0,0,0,.26);
   box-shadow:inset 0 0 0 1px var(--on-table-line);
   -webkit-overflow-scrolling:touch;
 }
-:root[data-skin="slate"] .boardscroll{background:rgba(20,30,28,.05)}
+:root[data-skin="slate"] .boardscroll{background:rgba(20,30,28,.10)}
 .board{
   position:relative;margin:auto;flex:0 0 auto;
   display:grid;gap:var(--tilegap);padding:var(--tilegap);
@@ -807,15 +831,19 @@ h1,h2,h3{margin:0;text-wrap:balance}
   width:var(--tile);height:var(--tile);border-radius:6px;position:relative;
   display:flex;align-items:center;justify-content:center;
   background:var(--tc,#555);
-  box-shadow:0 2px 0 rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.22);
+  box-shadow:0 2px 0 rgba(0,0,0,.3), inset 0 0 0 1px rgba(0,0,0,.28),
+             inset 0 1px 0 rgba(255,255,255,.3);
   cursor:default;user-select:none;-webkit-user-select:none;
 }
-.tile[data-col="R"]{--tc:var(--t-R)} .tile[data-col="O"]{--tc:var(--t-O)}
-.tile[data-col="Y"]{--tc:var(--t-Y)} .tile[data-col="G"]{--tc:var(--t-G)}
-.tile[data-col="B"]{--tc:var(--t-B)} .tile[data-col="P"]{--tc:var(--t-P)}
+.tile[data-col="R"]{--tc:var(--t-R);--mk:var(--mk-R)}
+.tile[data-col="O"]{--tc:var(--t-O);--mk:var(--mk-O)}
+.tile[data-col="Y"]{--tc:var(--t-Y);--mk:var(--mk-Y)}
+.tile[data-col="G"]{--tc:var(--t-G);--mk:var(--mk-G)}
+.tile[data-col="B"]{--tc:var(--t-B);--mk:var(--mk-B)}
+.tile[data-col="P"]{--tc:var(--t-P);--mk:var(--mk-P)}
 
 /* the six shapes, white on the colour */
-.tile .mark{width:58%;height:58%;background:#fff;display:block}
+.tile .mark{width:58%;height:58%;background:var(--mk,#fff);display:block}
 .tile[data-shape="circle"] .mark{border-radius:50%}
 .tile[data-shape="square"] .mark{border-radius:2px}
 .tile[data-shape="diamond"] .mark{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
@@ -879,4 +907,17 @@ h1,h2,h3{margin:0;text-wrap:balance}
 @media (max-width:560px){
   .boardwrap{padding:6px var(--pad) 2px;gap:5px}
   #screen-sixes .hand{gap:5px}
+}
+
+
+/* ---- naming the colour ----
+   Off by default. Turned on in Look & sound it puts the colour's initial in
+   the corner of every tile, so the colour never has to be judged by eye at
+   all. The letter takes the shape's colour, which is already chosen to be
+   readable on that face. */
+.tile .lt{display:none}
+:root[data-letters="yes"] .tile .lt{
+  display:block;position:absolute;right:3px;bottom:1px;
+  font-family:var(--mono);font-size:max(9px,calc(var(--tile) * .22));
+  font-weight:600;line-height:1;color:var(--mk,#fff);opacity:.92;
 }

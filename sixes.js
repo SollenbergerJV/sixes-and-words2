@@ -198,7 +198,10 @@ SixesGame.prototype.place = function (p, tileId, r, c) {
   if (!v.ok) throw new Error(v.why);
   const i = this.hands[p].findIndex(t => t.id === tileId);
   const tile = this.hands[p].splice(i, 1)[0];
-  this.placed.push({ tile: tile, r: r, c: c });
+  /* Where it came from, so taking it back puts it where it was. A tile that
+     reappears at the far end of the hand every time you change your mind is
+     a small thing that makes a hand impossible to keep track of. */
+  this.placed.push({ tile: tile, r: r, c: c, from: i });
   return this.turnScore();
 };
 
@@ -208,7 +211,9 @@ SixesGame.prototype.unplace = function (p, tileId) {
   const i = this.placed.findIndex(x => x.tile.id === tileId);
   if (i < 0) throw new Error('That tile is not on the table.');
   const back = this.placed.splice(i, 1)[0];
-  this.hands[p].push(back.tile);
+  const at = Math.max(0, Math.min(back.from === undefined ? this.hands[p].length : back.from,
+    this.hands[p].length));
+  this.hands[p].splice(at, 0, back.tile);
   return this.turnScore();
 };
 
@@ -294,6 +299,30 @@ SixesGame.prototype.swap = function (p, ids) {
   shuffle(this.bag, this.rnd);
 
   this.lastTurn = { who: p, kind: 'swapped', count: out.length };
+  if (this.stuck()) return this.finish(null);
+  this.turn = 1 - p;
+  return 0;
+};
+
+/* ---------- when there is nothing you can do ----------
+   With the bag empty and no legal square for any tile in your hand, there
+   is no move and no swap either. Without this the turn could never end:
+   the game simply stopped, with the player staring at a board and no
+   button to press. Passing is allowed only when it is genuinely forced,
+   so it cannot be used to stall. */
+SixesGame.prototype.mustPass = function (p) {
+  return this.phase === 'play' && this.placed.length === 0 &&
+    this.bag.length === 0 && !this.hasAnyPlay(p);
+};
+
+SixesGame.prototype.pass = function (p) {
+  if (this.phase !== 'play') throw new Error('The game is over.');
+  if (this.turn !== p) throw new Error('It is not your turn.');
+  if (this.placed.length) throw new Error('Take your tiles back first.');
+  if (this.bag.length) throw new Error('There are still tiles in the bag — swap instead of passing.');
+  if (this.hasAnyPlay(p)) throw new Error('You still have a move.');
+
+  this.lastTurn = { who: p, kind: 'passed' };
   if (this.stuck()) return this.finish(null);
   this.turn = 1 - p;
   return 0;

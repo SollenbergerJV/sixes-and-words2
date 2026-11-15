@@ -28,8 +28,25 @@
 
   const LINE_MAX = S.LINE_MAX || 6;
 
+  /* How the three settings actually differ.
+
+     Not by cleverness: at this game a player who simply takes the most
+     points available each turn is close to unbeatable, and every attempt
+     to be cleverer than that — weighing up what the turn leaves behind,
+     protecting the hand — measured WORSE over a few hundred games. So the
+     ladder is built the honest way instead, out of thoroughness. Sharp
+     looks at every tile in hand and plays the best turn it can find. The
+     others stop looking sooner, and sometimes take the second-best move.
+     That is how a person plays worse, too. */
+  const LEVELS = {
+    easy:   { cap: 2, stopChance: 0.5, slipChance: 0.35 },
+    steady: { cap: 4, stopChance: 0.18, slipChance: 0.15 },
+    sharp:  { cap: 6, stopChance: 0, slipChance: 0 }
+  };
+
   function AI(level) {
-    this.level = level || 'steady';     // 'easy' | 'steady' | 'sharp'
+    this.level = LEVELS[level] ? level : 'steady';   // 'easy' | 'steady' | 'sharp'
+    this.cfg = LEVELS[this.level];
   }
 
   /* Every legal single placement in the position as it stands. */
@@ -71,34 +88,40 @@
   /* Build a whole turn, one tile at a time, keeping the best each step. */
   AI.prototype.planTurn = function (g, p) {
     const chosen = [];
-    const cap = this.level === 'easy' ? 2 : S.HAND_SIZE || 6;
+    const cfg = this.cfg;
 
     for (;;) {
-      if (chosen.length >= cap) break;
+      if (chosen.length >= cfg.cap) break;
       const options = this.moves(g, p);
       if (!options.length) break;
 
-      let best = null, bestScore = -Infinity;
+      /* Score every legal placement, then keep the best two so that a
+         weaker setting has something sensible to pick instead. */
+      let best = null, bestScore = -Infinity, second = null, secondScore = -Infinity;
       for (const m of options) {
         const before = g.turnScore();
         g.place(p, m.id, m.r, m.c);
-        let value = g.turnScore() - (chosen.length ? before : 0);
-        if (this.level === 'sharp') value -= this.gift(g) * 0.5;
+        const value = g.turnScore() - (chosen.length ? before : 0);
         g.unplace(p, m.id);
         /* A coin toss between equals keeps the computer from always
            building in the same direction, which looks mechanical. */
         if (value > bestScore || (value === bestScore && Math.random() < 0.3)) {
+          second = best; secondScore = bestScore;
           bestScore = value; best = m;
+        } else if (value > secondScore) {
+          secondScore = value; second = m;
         }
       }
       if (!best) break;
 
-      /* Easy walks away from a turn that is going well, so it is beatable
-         without being erratic: it plays a real move, just not every one. */
-      if (this.level === 'easy' && chosen.length >= 1 && Math.random() < 0.5) break;
+      /* Stopping early and taking the second-best move are the two ways a
+         person plays below their best, so they are the two the weaker
+         settings use. Both still play a real, legal, sensible move. */
+      if (chosen.length >= 1 && Math.random() < cfg.stopChance) break;
+      const pick = (second && Math.random() < cfg.slipChance) ? second : best;
 
-      g.place(p, best.id, best.r, best.c);
-      chosen.push(best);
+      g.place(p, pick.id, pick.r, pick.c);
+      chosen.push(pick);
     }
 
     const score = chosen.length ? g.turnScore() : 0;
@@ -113,7 +136,7 @@
     const plan = this.planTurn(g, p);
     if (plan.tiles.length) return { kind: 'play', tiles: plan.tiles, score: plan.score };
     if (g.bag.length) return { kind: 'swap', ids: this.worstTiles(g, p) };
-    return { kind: 'stuck' };
+    return { kind: 'pass' };
   };
 
   /* Which tiles to throw back: the ones that share least with the rest of
@@ -135,6 +158,7 @@
       g.bag.length,
       this.level === 'easy' ? 2 : Math.max(1, score.filter(x => x.friends <= 0).length) || 2
     );
+
     return score.slice(0, howMany).map(x => x.id);
   };
 

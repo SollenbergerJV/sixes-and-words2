@@ -31,7 +31,11 @@ function esc(s) {
 /* ---------- settings that outlive the session ---------- */
 const SET_KEY = 'wands.settings';
 const S = {
+  /* No target score. A game of Sixes ends when the bag and somebody's hand
+     are both empty, and the higher score wins — there is nothing to play
+     "up to", so the app no longer offers a number. */
   game: 'sixes', mode: 'ai', diff: 'steady', target: 0,
+  letters: false,
   skin: 'felt', dark: false, sound: true,
   names: ['You', 'Opponent']
 };
@@ -165,6 +169,13 @@ function myTurn() { return G && G.turn === viewer && G.phase === 'play'; }
 function placedCount() { return LIVE ? LIVE.placed.length : (G ? G.placed.length : 0); }
 function pendingScore() { return LIVE ? LIVE.turnScore() : (G ? G.pending : 0); }
 function bagCount() { return LIVE ? LIVE.bag.length : (G ? G.bagCount : 0); }
+/* Whether this player is genuinely stuck. Offline the rules can say;
+   online only the server knows, because only the server can see the hand
+   against the whole board. */
+function mustPass() {
+  if (LIVE) return LIVE.mustPass(viewer);
+  return !!(G && G.mustPass);
+}
 
 /* ---------- drawing ---------- */
 function tileNode(col, shape) {
@@ -172,6 +183,10 @@ function tileNode(col, shape) {
   n.dataset.col = col;
   n.dataset.shape = shape;
   n.appendChild(el('span', 'mark'));
+  /* Always drawn, shown only when the colour-letters setting is on. Putting
+     it in the markup either way keeps the setting a pure style switch, with
+     nothing to redraw. */
+  n.appendChild(el('span', 'lt', col));
   n.setAttribute('aria-label', (window.COLOR_NAME ? COLOR_NAME[col] : col) + ' ' + shape);
   return n;
 }
@@ -212,8 +227,8 @@ function renderOpp() {
     const n = (G.handCounts ? G.handCounts[them] : (G.hands[them] || []).length);
     let note = '';
     if (G.lastTurn && G.lastTurn.who === them) {
-      note = G.lastTurn.kind === 'swapped'
-        ? ' · swapped ' + G.lastTurn.count
+      note = G.lastTurn.kind === 'swapped' ? ' · swapped ' + G.lastTurn.count
+        : G.lastTurn.kind === 'passed' ? ' · no move'
         : ' · scored ' + G.lastTurn.score;
     }
     seat.textContent = nameOf(them) + ' · ' + n + ' tile' + (n === 1 ? '' : 's') + note;
@@ -371,7 +386,13 @@ function renderActions() {
     return;
   }
 
-  if (bagCount()) add('Swap tiles', function () { swapping = new Set(); render(); });
+  if (bagCount()) {
+    add('Swap tiles', function () { swapping = new Set(); render(); });
+  } else if (mustPass()) {
+    /* No tiles left to swap and nowhere to put the ones in hand. Without a
+       button here the game would simply stop with nothing to press. */
+    add('No move — pass', function () { doPass(); }, 'primary');
+  }
 }
 
 function renderMsg() {
@@ -395,6 +416,8 @@ function renderMsg() {
     main = 'Tap a square to put it down';
   } else if (placedCount()) {
     main = 'Add another, or finish your turn';
+  } else if (mustPass()) {
+    main = 'Nothing you can play, and the bag is empty';
   } else {
     main = 'Your turn — tap a tile';
   }
@@ -504,6 +527,17 @@ function doSwap() {
   }
 }
 
+function doPass() {
+  if (!myTurn()) return;
+  if (LIVE) {
+    try { LIVE.pass(viewer); } catch (e) { sfx.bad(); flashMsg(e.message); return; }
+    render();
+    maybeBot();
+  } else {
+    act({ do: 'pass' });
+  }
+}
+
 function act(a) {
   if (isOnline()) { NET.act(a); return; }
   /* Pass and play has no server, so "next game" is handled here. */
@@ -534,6 +568,12 @@ function playBotTurn() {
 
   if (d.kind === 'swap') {
     try { LIVE.swap(1, d.ids); } catch (e) {}
+    render();
+    maybeBot();
+    return;
+  }
+  if (d.kind === 'pass') {
+    try { LIVE.pass(1); } catch (e) {}
     render();
     maybeBot();
     return;
@@ -587,7 +627,6 @@ function paintLobby() {
   $('#n1').value = (S.names[1] === 'Opponent' || S.names[1] === 'Computer') ? '' : S.names[1];
   segPaint('#modeSeg', S.mode);
   segPaint('#diffSeg', S.diff);
-  segPaint('#targetSeg', String(S.target));
   const d = $('#diffField');
   if (d) d.hidden = S.mode !== 'ai';
   const n1 = $('#n1');
@@ -618,6 +657,7 @@ function segWire(sel, onPick) {
 function applySkin() {
   document.documentElement.setAttribute('data-skin', S.skin);
   document.documentElement.setAttribute('data-dark', S.dark ? 'yes' : 'no');
+  document.documentElement.setAttribute('data-letters', S.letters ? 'yes' : 'no');
 }
 
 /* ---------- the overlays: rules and settings ---------- */
@@ -664,6 +704,10 @@ function showSettings() {
     '<div class="setrow"><span>Night colours</span><div class="seg" id="darkSeg">' +
     '<button data-v="no" aria-pressed="' + (!S.dark) + '">Off</button>' +
     '<button data-v="yes" aria-pressed="' + (!!S.dark) + '">On</button></div></div>' +
+    '<div class="setrow"><span>Letter on each tile</span><div class="seg" id="letterSeg">' +
+    '<button data-v="off" aria-pressed="' + (!S.letters) + '">Off</button>' +
+    '<button data-v="on" aria-pressed="' + (!!S.letters) + '">On</button></div></div>' +
+    '<p class="hint">Puts the colour\'s initial on every tile, for when the colours alone are hard to tell apart.</p>' +
     '<div class="setrow"><span>Sound</span><div class="seg" id="soundSeg">' +
     '<button data-v="off" aria-pressed="' + (!S.sound) + '">Off</button>' +
     '<button data-v="on" aria-pressed="' + (!!S.sound) + '">On</button></div></div>' +
@@ -683,6 +727,7 @@ function showSettings() {
   };
   wire('#skinSeg', function (v) { S.skin = v; });
   wire('#darkSeg', function (v) { S.dark = v === 'yes'; });
+  wire('#letterSeg', function (v) { S.letters = v === 'on'; });
   wire('#soundSeg', function (v) { S.sound = v === 'on'; });
 }
 
@@ -735,7 +780,6 @@ function initTable() {
 
   segWire('#modeSeg', function (v) { S.mode = v; });
   segWire('#diffSeg', function (v) { S.diff = v; });
-  segWire('#targetSeg', function (v) { S.target = parseInt(v, 10) || 0; });
 
   $('#startBtn').onclick = guard(startLocalGame);
   $('#sxBack').onclick = guard(leaveTable);

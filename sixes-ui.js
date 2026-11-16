@@ -35,7 +35,7 @@ const S = {
      are both empty, and the higher score wins — there is nothing to play
      "up to", so the app no longer offers a number. */
   game: 'sixes', mode: 'ai', diff: 'steady', target: 0,
-  letters: false,
+  numbers: false,
   skin: 'felt', dark: false, sound: true,
   names: ['You', 'Opponent']
 };
@@ -183,21 +183,54 @@ function mustPass() {
 }
 
 /* ---------- drawing ---------- */
+/* Red 1, orange 2, yellow 3, green 4, blue 5, purple 6 — the order they
+   are listed in the rules, so the key reads as a sequence rather than an
+   arbitrary set of labels. */
+function colourNumber(col) {
+  const order = window.COLORS || ['R', 'O', 'Y', 'G', 'B', 'P'];
+  const i = order.indexOf(col);
+  return i < 0 ? '' : i + 1;
+}
+
 function tileNode(col, shape) {
   const n = el('div', 'tile');
   n.dataset.col = col;
   n.dataset.shape = shape;
   n.appendChild(el('span', 'mark'));
-  /* Always drawn, shown only when the colour-letters setting is on. Putting
-     it in the markup either way keeps the setting a pure style switch, with
-     nothing to redraw. */
-  n.appendChild(el('span', 'lt', col));
+  /* The colour's number, drawn on every tile but shown only when the
+     setting is on. A player who sees no colour at all reads the number
+     and the key beside the board instead, and plays the same game.
+     Keeping it in the markup either way makes the setting a pure style
+     switch with nothing to redraw. */
+  n.appendChild(el('span', 'num', String(colourNumber(col))));
   n.setAttribute('aria-label', (window.COLOR_NAME ? COLOR_NAME[col] : col) + ' ' + shape);
   return n;
 }
 
+/* The key: which number is which colour. Only drawn when the numbers are
+   on, because without them it explains nothing. */
+function renderKey() {
+  const host = $('#sxKey');
+  if (!host) return;
+  host.hidden = !S.numbers;
+  if (!S.numbers) { host.innerHTML = ''; return; }
+  const names = window.COLOR_NAME || {};
+  const order = window.COLORS || ['R', 'O', 'Y', 'G', 'B', 'P'];
+  host.innerHTML = '';
+  order.forEach(function (col, i) {
+    const row = el('div', 'keyrow');
+    const sw = el('span', 'keyswatch');
+    sw.appendChild(el('span', '', String(i + 1)));
+    sw.dataset.col = col;
+    row.appendChild(sw);
+    row.appendChild(el('span', 'keyname', names[col] || col));
+    host.appendChild(row);
+  });
+}
+
 function render() {
   if (!G) return;
+  renderKey();
   renderScore();
   renderOpp();
   renderBoard();
@@ -446,8 +479,14 @@ function fitBoard() {
 
   const CHROME = 58;    // the padding either side of the board area, and a
                         // little slack so the last row is never half shown
+  /* The key sits beside the board on a wide screen and above it on a
+     narrow one. Only the second costs height, so only the second is
+     subtracted — reading it off the element rather than guessing which
+     case we are in. */
+  const key = screen.querySelector('#sxKey');
+  const keyH = (key && !key.hidden && getComputedStyle(key).position === 'static') ? key.offsetHeight + 4 : 0;
   const room = screen.clientHeight - h('.topbar') - h('.oppzone') - h('.handmeta') -
-    h('.hand') - h('.actions') - Math.max(20, h('#sxMsg')) - CHROME;
+    h('.hand') - h('.actions') - Math.max(20, h('#sxMsg')) - keyH - CHROME;
   const wide = scroll.clientWidth - 14;
 
   const gap = 3;
@@ -669,7 +708,7 @@ function segWire(sel, onPick) {
 function applySkin() {
   document.documentElement.setAttribute('data-skin', S.skin);
   document.documentElement.setAttribute('data-dark', S.dark ? 'yes' : 'no');
-  document.documentElement.setAttribute('data-letters', S.letters ? 'yes' : 'no');
+  document.documentElement.setAttribute('data-numbers', S.numbers ? 'yes' : 'no');
 }
 
 /* ---------- the overlays: rules and settings ---------- */
@@ -701,6 +740,8 @@ function showRules() {
     '<section><h3>Scoring</h3>' +
     '<p>You score <b>one point per tile</b> in every line you built or added to. A tile that lands where a row and a column meet scores in <b>both</b>, which is where the big turns come from.</p>' +
     '<p>Complete a line of six and you score its six tiles <b>plus six more</b>.</p></section>' +
+    '<section><h3>If the colours are hard to tell apart</h3>' +
+    '<p>In <b>Look &amp; sound</b> you can turn on <b>numbers for colours</b>. Every tile then carries a number — red 1, orange 2, yellow 3, green 4, blue 5, purple 6 — and a key appears beside the board. With the shapes and the numbers, the game can be played without seeing colour at all.</p></section>' +
     '<section><h3>Swapping, and the end</h3>' +
     '<p>Instead of playing you can swap any number of tiles back into the bag — that uses your whole turn.</p>' +
     '<p>When the bag is empty and somebody plays their last tile, the game ends and they score <b>six more</b>. Highest score wins.</p></section>'
@@ -716,10 +757,10 @@ function showSettings() {
     '<div class="setrow"><span>Night colours</span><div class="seg" id="darkSeg">' +
     '<button data-v="no" aria-pressed="' + (!S.dark) + '">Off</button>' +
     '<button data-v="yes" aria-pressed="' + (!!S.dark) + '">On</button></div></div>' +
-    '<div class="setrow"><span>Letter on each tile</span><div class="seg" id="letterSeg">' +
-    '<button data-v="off" aria-pressed="' + (!S.letters) + '">Off</button>' +
-    '<button data-v="on" aria-pressed="' + (!!S.letters) + '">On</button></div></div>' +
-    '<p class="hint">Puts the colour\'s initial on every tile, for when the colours alone are hard to tell apart.</p>' +
+    '<div class="setrow"><span>Numbers for colours</span><div class="seg" id="numberSeg">' +
+    '<button data-v="off" aria-pressed="' + (!S.numbers) + '">Off</button>' +
+    '<button data-v="on" aria-pressed="' + (!!S.numbers) + '">On</button></div></div>' +
+    '<p class="hint">Puts a number on every tile and a key beside the board, so the colours never have to be told apart by eye.</p>' +
     '<div class="setrow"><span>Sound</span><div class="seg" id="soundSeg">' +
     '<button data-v="off" aria-pressed="' + (!S.sound) + '">Off</button>' +
     '<button data-v="on" aria-pressed="' + (!!S.sound) + '">On</button></div></div>' +
@@ -739,7 +780,7 @@ function showSettings() {
   };
   wire('#skinSeg', function (v) { S.skin = v; });
   wire('#darkSeg', function (v) { S.dark = v === 'yes'; });
-  wire('#letterSeg', function (v) { S.letters = v === 'on'; });
+  wire('#numberSeg', function (v) { S.numbers = v === 'on'; renderKey(); if (G) render(); });
   wire('#soundSeg', function (v) { S.sound = v === 'on'; });
 }
 
